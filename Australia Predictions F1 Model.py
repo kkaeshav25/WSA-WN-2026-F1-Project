@@ -7,7 +7,7 @@ from sklearn.metrics import mean_absolute_error
 #Loads the 2025 Australian GP race data such as LapTime
 session_2025 = fastf1.get_session(2025, 1, 'R')
 session_2025.load()
-laps_2025 = session_2025.laps[["Driver", "LapTime"]].copy()
+laps_2025 = session_2025.laps.pick_track_status('1')
 laps_2025.dropna(subset = ["LapTime"], inplace= True)
 laps_2025["LapTime (s)"] = laps_2025["LapTime"].dt.total_seconds()
 #Sets up dataframe to contain qualifying time for drivers who stayed on from 2025 to 2026
