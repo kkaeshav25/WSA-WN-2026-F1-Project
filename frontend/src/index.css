@@ -1,0 +1,194 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Base Styles ─── */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: #0a0a0f;
+  color: #e8e8f0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Glassmorphism Panel ─── */
+
+.glass-panel {
+  background: rgb(0, 0, 0);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid #2a2a3a;
+  border-radius: 16px;
+}
+
+.glass-panel-subtle {
+  background: rgba(26, 26, 40, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(42, 42, 58, 0.5);
+  border-radius: 12px;
+}
+
+/* ─── Scrollbar ─── */
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a3a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8888a0;
+}
+
+/* ─── Animations ─── */
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 6px #ff2020);
+  }
+
+  50% {
+    opacity: 0.7;
+    filter: drop-shadow(0 0 12px #ff2020);
+  }
+}
+
+@keyframes drs-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 8px #00d27a, 0 0 16px #00d27a;
+  }
+
+  50% {
+    box-shadow: 0 0 12px #00d27a, 0 0 24px #00d27a;
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in-left 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-drs-glow {
+  animation: drs-glow 1.2s ease-in-out infinite;
+}
+
+/* ─── Utility ─── */
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.text-gradient-f1 {
+  background: linear-gradient(135deg, #e10600 0%, #ff4444 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Stint Chart ─── */
+
+.stint-row {
+  transition: background-color 0.15s ease;
+  border-radius: 6px;
+}
+
+.stint-row:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.stint-row:nth-child(even of .stint-row) {
+  background-color: rgba(255, 255, 255, 0.01);
+}
+
+.stint-bar {
+  transition: opacity 0.2s ease;
+}
+
+.stint-row:hover .stint-bar {
+  opacity: 1;
+  filter: brightness(1.2);
+}
+
+.stint-pit-circle {
+  transition: transform 0.15s ease;
+}
+
+.stint-pit-circle:hover {
+  transform: translate(-50%, -50%) scale(1.3) !important;
+  z-index: 30 !important;
+}
+
+.stint-pit-legend {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: #0a0a0f;
+}
+
+.stint-event-zone {
+  pointer-events: none;
+  z-index: 5;
+}
