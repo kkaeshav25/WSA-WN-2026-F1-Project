@@ -1,0 +1,9 @@
+1. Pit stops in the race
+2. Race events in the race (Safety Car, Virtual Safety Car, Red Flag, etc.)
+3. Tyre degradation in the race
+4. Weather conditions in the race
+5. Track conditions in the race
+6. Driver performance in the race
+7. Car performance in the race
+8. Race strategy in the race
+9. Race penalties in the race
