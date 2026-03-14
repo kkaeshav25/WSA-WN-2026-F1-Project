@@ -5,23 +5,17 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error
 #Loads the 2026 Australian GP free practice and qualifying such as LapTime
-FP1_laps = fastf1.get_session(2026, 1, 'FP1')
+FP1_laps = fastf1.get_session(2026, 2, 'FP1')
 FP1_laps.load()
 FP1_26 = FP1_laps.laps.pick_track_status('1')
 FP1_26.dropna(subset = ["LapTime"], inplace= True)
 FP1_26["LapTime (s)"] = FP1_26["LapTime"].dt.total_seconds()
 
-FP2_laps = fastf1.get_session(2026, 1, 'FP2')
+FP2_laps = fastf1.get_session(2026, 2, 'S')
 FP2_laps.load()
 FP2_26= FP2_laps.laps.pick_track_status('1')
 FP2_26.dropna(subset = ["LapTime"], inplace= True)
 FP2_26["LapTime (s)"] = FP2_26["LapTime"].dt.total_seconds()
-
-FP3_laps = fastf1.get_session(2026, 1, 'FP3')
-FP3_laps.load()
-FP3_26 = FP3_laps.laps.pick_track_status('1')
-FP3_26.dropna(subset = ["LapTime"], inplace= True)
-FP3_26["LapTime (s)"] = FP3_26["LapTime"].dt.total_seconds()
 #Sets up dataframe to contain qualifying time for drivers who stayed on from 2025 to 2026
 qualifying_2026 = pd.DataFrame({
     "Driver": ["Lando Norris", "Oscar Piastri", "Max Verstappen", "Isack Hadjar",
@@ -30,9 +24,9 @@ qualifying_2026 = pd.DataFrame({
                 "Esteban Ocon", "Nico Hulkenberg", "Gabriel Bortoleto", "Pierre Gasly",
                 "Ollie Bearman", "Arvid Lindblad", "Franco Colapinto", "Sergio Perez", "Valterri Bottas"
                 ],
-    "QualifyingTime (s)":[79.475, 79.380, 83.245, 79.303, 78.518, 78.811,
-                           79.478, 79.327, 83.246, 80.941, 79.994, 81.969, 83.247, 80.491, 80.303, 80.221, 80.501,
-                           80.311, 79.971, 81.270, 82.605, 83.244]
+    "QualifyingTime (s)":[92.608, 92.550, 93.002, 93.121, 92.286, 92.064,
+                           92.415, 92.428, 94.317, 94.772, 93.765, 95.203, 95.995, 93.538, 93.354, 93.965, 92.873,
+                           93.292, 93.784, 93.357, 96.906, 95.436]
 })
 #Maps driver names to "driver codes" as tracked on the API
 driver_mapping = {
@@ -44,7 +38,7 @@ driver_mapping = {
 }
 qualifying_2026["DriverCode"] = qualifying_2026["Driver"].map(driver_mapping)
 #Left-Joins the qualifying time with the individual laptimes for each driver
-all_fp = pd.concat([FP1_26, FP2_26, FP3_26], ignore_index=True)
+all_fp = pd.concat([FP1_26, FP2_26], ignore_index=True)
 merged_data = qualifying_2026.merge(all_fp, left_on = "DriverCode", right_on = "Driver")
 # Convert sector times to seconds
 merged_data["Sector1Time (s)"] = merged_data["Sector1Time"].dt.total_seconds()
@@ -69,7 +63,7 @@ qualifying_2026["PredictedRaceTime (s)"] = qualifying_2026["QualifyingTime (s)"]
 
 qualifying_2026 = qualifying_2026.sort_values(by = "PredictedRaceTime (s)")
 
-print("\n Predicted 2026 Australian GP Winner \n")
+print("\n Predicted 2026 Chinese GP Winner \n")
 print(qualifying_2026[["Driver", "PredictedRaceTime (s)"]])
 #Mean Absolute Error
 y_pred = model.predict(X_test)
