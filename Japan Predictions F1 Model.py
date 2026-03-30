@@ -7,8 +7,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error
 
 YEAR = 2026
-GP_EVENT = 2
-N_LAPS = 56
+GP_EVENT = 3
+N_LAPS = 53
 
 DRIVER_MAPPING = {
     'Lando Norris':'NOR', 'Oscar Piastri':'PIA', 'Max Verstappen':'VER', 'Isack Hadjar':'HAD',
@@ -28,7 +28,7 @@ def as_seconds(timedelta_series):
 
 def extract_pre_race_features(year, gp):
     sessions = {}
-    for label, sname in [('FP1','FP1'), ('FP2','FP2'), ('Q','Q')]:
+    for label, sname in [('FP1','FP1'), ('FP2','FP2'), ('FP3', 'FP3'), ('Q','Q')]:
         try:
             s = fastf1.get_session(year, gp, sname)
             s.load(laps=True)
@@ -146,7 +146,7 @@ if __name__=='__main__':
     simulation=simulate_race(pre,model,N_LAPS,sc_laps=[17,32])
     final=simulation[simulation['lap']==N_LAPS].sort_values('cum_time').reset_index(drop=True)
     print('Projected race finish:')
-    print(final[['position','Driver','cum_time']].head(10))
+    print(final[['position','Driver','cum_time']].head(22))
 
     leader=final.iloc[0]['Driver']
     lap1=simulation[(simulation['Driver']==leader)&(simulation['lap']==1)].iloc[0]['lap_time']
