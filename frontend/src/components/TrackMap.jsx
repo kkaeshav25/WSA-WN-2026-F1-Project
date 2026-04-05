@@ -28,6 +28,7 @@ export default function TrackMap() {
     const {
         trackCoords, corners, driverStates, drivers,
         isLoading, selectedDriverNumber, setSelectedDriverNumber,
+        telemetry, lapStarts, currentTime,
     } = useSimulation();
 
     const boundsRef = useRef(null);
@@ -160,6 +161,102 @@ export default function TrackMap() {
                 }
             }
 
+            // ── Telemetry driver dots (animated from simulation) ──
+            if (telemetry && lapStarts && currentTime != null) {
+                // Map driver names to numbers
+                const nameToNum = new Map();
+                for (const [num, info] of drivers) {
+                    if (info.full_name) nameToNum.set(info.full_name, num);
+                    if (info.name_acronym) nameToNum.set(info.name_acronym, num);
+                }
+
+                for (const [driverName, points] of Object.entries(telemetry)) {
+                    if (!points || points.length === 0) continue;
+                    const drvNum = nameToNum.get(driverName);
+                    if (!drvNum) continue;
+                    const driver = drivers.get(drvNum);
+                    if (!driver) continue;
+
+                    // Find current lap and local time
+                    const driverLapStarts = lapStarts[driverName];
+                    if (!driverLapStarts) continue;
+
+                    const laps = Object.keys(driverLapStarts).map(Number).sort((a, b) => a - b);
+                    let currentLap = 1;
+                    let localTime = currentTime;
+                    for (const lap of laps) {
+                        if (currentTime >= driverLapStarts[lap]) {
+                            currentLap = lap;
+                            localTime = currentTime - driverLapStarts[lap];
+                        } else {
+                            break;
+                        }
+                    }
+
+                    // Interpolate position in telemetry (assuming telemetry loops for all laps)
+                    let pos = null;
+                    if (points.length > 0) {
+                        // Find the segment
+                        for (let i = 0; i < points.length - 1; i++) {
+                            const p1 = points[i];
+                            const p2 = points[i + 1];
+                            const t1 = p1.t != null ? p1.t : p1.time_s;
+                            const t2 = p2.t != null ? p2.t : p2.time_s;
+                            if (t1 == null || t2 == null) continue;
+                            if (localTime >= t1 && localTime < t2) {
+                                const alpha = (localTime - t1) / (t2 - t1);
+                                pos = {
+                                    x: p1.x + alpha * (p2.x - p1.x),
+                                    y: p1.y + alpha * (p2.y - p1.y),
+                                };
+                                break;
+                            }
+                        }
+                        // If past last point, wrap to first
+                        const lastTime = points[points.length - 1].t ?? points[points.length - 1].time_s;
+                        if (!pos && lastTime != null && localTime >= lastTime) {
+                            pos = { x: points[0].x, y: points[0].y };
+                        }
+                        // If before first, use first
+                        if (!pos) {
+                            pos = { x: points[0].x, y: points[0].y };
+                        }
+                    }
+
+                    if (pos) {
+                        const { cx, cy } = toPixel(pos.x, pos.y, canvas, bounds);
+                        const color = driver.team_colour;
+                        const r = DOT_RADIUS * dpr;
+
+                        // Glow
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, r + 4 * dpr, 0, Math.PI * 2);
+                        const glow = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r + 5 * dpr);
+                        glow.addColorStop(0, color + '50');
+                        glow.addColorStop(1, color + '00');
+                        ctx.fillStyle = glow;
+                        ctx.fill();
+
+                        // Dot
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                        ctx.fillStyle = color;
+                        ctx.fill();
+
+                        // Label
+                        ctx.font = `bold ${7 * dpr}px 'JetBrains Mono', monospace`;
+                        ctx.fillStyle = '#b0b0c0';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'middle';
+                        ctx.save();
+                        ctx.shadowColor = '#000000cc';
+                        ctx.shadowBlur = 3 * dpr;
+                        ctx.fillText(driver.name_acronym, cx + r + 3 * dpr, cy);
+                        ctx.restore();
+                    }
+                }
+            }
+
             // ── Driver dots (real X/Y from telemetry) ──
             if (driverStates && driverStates.size > 0) {
                 // Draw unselected first, then selected on top
@@ -218,7 +315,7 @@ export default function TrackMap() {
             window.removeEventListener('resize', resize);
             if (animRef.current) cancelAnimationFrame(animRef.current);
         };
-    }, [trackCoords, corners, driverStates, drivers, isLoading, selectedDriverNumber, toPixel]);
+    }, [trackCoords, corners, driverStates, drivers, isLoading, selectedDriverNumber, telemetry, lapStarts, currentTime, toPixel]);
 
     // ── Click to select driver ──
     const handleClick = useCallback((e) => {
@@ -232,6 +329,8 @@ export default function TrackMap() {
         const bounds = boundsRef.current;
 
         let closest = null, closestDist = Infinity;
+
+        // Check driverStates
         for (const [num, state] of driverStates) {
             if (state.x == null) continue;
             const { cx, cy } = toPixel(state.x, state.y, canvas, bounds);
@@ -241,8 +340,72 @@ export default function TrackMap() {
                 closest = num;
             }
         }
+
+        // Check telemetry drivers
+        if (telemetry && lapStarts && currentTime != null) {
+            const nameToNum = new Map();
+            for (const [num, info] of drivers) {
+                if (info.full_name) nameToNum.set(info.full_name, num);
+                if (info.name_acronym) nameToNum.set(info.name_acronym, num);
+            }
+            for (const [driverName, points] of Object.entries(telemetry)) {
+                if (!points || points.length === 0) continue;
+                const drvNum = nameToNum.get(driverName);
+                if (!drvNum) continue;
+
+                // Same interpolation logic as above
+                const driverLapStarts = lapStarts[driverName];
+                if (!driverLapStarts) continue;
+
+                const laps = Object.keys(driverLapStarts).map(Number).sort((a, b) => a - b);
+                let localTime = currentTime;
+                for (const lap of laps) {
+                    if (currentTime >= driverLapStarts[lap]) {
+                        localTime = currentTime - driverLapStarts[lap];
+                    } else {
+                        break;
+                    }
+                }
+
+                let pos = null;
+                if (points.length > 0) {
+                    for (let i = 0; i < points.length - 1; i++) {
+                        const p1 = points[i];
+                        const p2 = points[i + 1];
+                        const t1 = p1.t != null ? p1.t : p1.time_s;
+                        const t2 = p2.t != null ? p2.t : p2.time_s;
+                        if (t1 == null || t2 == null) continue;
+                        if (localTime >= t1 && localTime < t2) {
+                            const alpha = (localTime - t1) / (t2 - t1);
+                            pos = {
+                                x: p1.x + alpha * (p2.x - p1.x),
+                                y: p1.y + alpha * (p2.y - p1.y),
+                            };
+                            break;
+                        }
+                    }
+                    const lastTime = points[points.length - 1].t ?? points[points.length - 1].time_s;
+                    if (!pos && lastTime != null && localTime >= lastTime) {
+                        pos = { x: points[0].x, y: points[0].y };
+                    }
+                    if (!pos) {
+                        pos = { x: points[0].x, y: points[0].y };
+                    }
+                }
+
+                if (pos) {
+                    const { cx, cy } = toPixel(pos.x, pos.y, canvas, bounds);
+                    const d = Math.sqrt((mx - cx) ** 2 + (my - cy) ** 2);
+                    if (d < 30 * dpr && d < closestDist) {
+                        closestDist = d;
+                        closest = drvNum;
+                    }
+                }
+            }
+        }
+
         if (closest !== null) setSelectedDriverNumber(closest);
-    }, [driverStates, toPixel, setSelectedDriverNumber]);
+    }, [driverStates, telemetry, lapStarts, currentTime, drivers, toPixel, setSelectedDriverNumber]);
 
     return (
         <div className="relative w-full h-full overflow-hidden rounded-2xl">
@@ -251,7 +414,7 @@ export default function TrackMap() {
             <div className="absolute top-3 left-3 pointer-events-none">
                 <div className="glass-panel-subtle px-3 py-1.5">
                     <span className="text-xs font-semibold text-f1-text-muted uppercase tracking-wider">
-                        Circuit de Spa-Francorchamps
+                        Shanghai International Circuit
                     </span>
                 </div>
             </div>

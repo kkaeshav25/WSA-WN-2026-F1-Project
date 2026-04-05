@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 
 /**
- * useRaceData — Loads the comprehensive race_mock.json from FastF1
+ * useRaceData — Loads race_mock.json and telemetry.json
  *
  * Provides:
  *   - Circuit outline (rotated), corners
  *   - Driver info (abbreviation, team, team_color)
- *   - Lap timing data (positions per lap, lap times, sectors, compounds)
- *   - Telemetry timeline (X, Y, Speed, RPM, Gear, Throttle, Brake, DRS)
+ *   - Lap timing data for leaderboard position tracking
+ *   - Generated driver telemetry timeline from X/Y positions
+ *   - Simulated telemetry per driver (t, x, y)
  */
 export default function useRaceData() {
     const [data, setData] = useState(null);
@@ -20,9 +21,15 @@ export default function useRaceData() {
         async function load() {
             try {
                 setIsLoading(true);
-                const res = await fetch('/race_mock.json');
-                if (!res.ok) throw new Error(`Failed to load race data: ${res.status}`);
-                const raw = await res.json();
+                const [raceRes, telemetryRes, lapStartsRes] = await Promise.all([
+                    fetch('/race_mock.json'),
+                    fetch('/telemetry.json').catch(() => null),  // Optional, don't fail if missing
+                    fetch('/lap_starts.json').catch(() => null),  // Optional
+                ]);
+                if (!raceRes.ok) throw new Error(`Failed to load race data: ${raceRes.status}`);
+                const raw = await raceRes.json();
+                const telemetryRaw = telemetryRes && telemetryRes.ok ? await telemetryRes.json() : null;
+                const lapStartsRaw = lapStartsRes && lapStartsRes.ok ? await lapStartsRes.json() : null;
 
                 if (cancelled) return;
 
@@ -61,25 +68,26 @@ export default function useRaceData() {
                 }
 
                 // ── Build telemetry timeline ──
-                // Merge all drivers' telemetry into a single sorted timeline by session time
-                // Apply rotation to X/Y coordinates
+                // Use telemetry.json for the real driver position timeline if available.
+                const telemetrySource = telemetryRaw || raw.telemetry || {};
                 const allSamples = [];
-                for (const [drvNum, samples] of Object.entries(raw.telemetry)) {
+                for (const [drvNum, samples] of Object.entries(telemetrySource)) {
                     const num = parseInt(drvNum, 10) || drvNum;
                     for (const s of samples) {
-                        if (s.t == null) continue;
+                        const t = s.t != null ? s.t : s.time_s;
+                        if (t == null) continue;
                         const rotated = (s.x != null && s.y != null) ? rotatePoint(s.x, s.y) : {};
                         allSamples.push({
-                            t: s.t,
+                            t,
                             driver_number: num,
                             x: rotated.x,
                             y: rotated.y,
-                            speed: s.spd || 0,
-                            rpm: s.rpm || 0,
-                            gear: s.gear || 0,
-                            throttle: s.thr || 0,
-                            brake: s.brk || false,
-                            drs: (s.drs != null && s.drs >= 10), // DRS active when ≥ 10
+                            speed: s.spd ?? s.speed ?? 0,
+                            rpm: s.rpm ?? 0,
+                            gear: s.gear ?? 0,
+                            throttle: s.thr ?? s.throttle ?? 0,
+                            brake: s.brk ?? s.brake ?? false,
+                            drs: s.drs != null ? s.drs : false,
                             lap: s.lap || 0,
                         });
                     }
@@ -131,6 +139,8 @@ export default function useRaceData() {
                     weather,
                     detailedLaps,
                     sessionInfo: raw.session,
+                    telemetry: telemetryRaw,
+                    lapStarts: lapStartsRaw,
                 });
 
             } catch (err) {

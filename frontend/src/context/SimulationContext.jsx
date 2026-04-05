@@ -343,6 +343,8 @@ export function SimulationProvider({ children }) {
         sessionInfo: data?.sessionInfo || null,
         isLoading,
         apiError: error,
+        telemetry: data?.telemetry || null,
+        lapStarts: data?.lapStarts || null,
 
         // Smoothly interpolated driver states
         driverStates: smoothStates,

@@ -5,6 +5,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error
+import json
 
 YEAR = 2026
 GP_EVENT = 2
@@ -36,6 +37,91 @@ def extract_pre_race_features(year, gp):
         except Exception as e:
             print(f'WARNING: cannot load {label}: {e}')
             sessions[label] = None
+
+    # Save session data for front-end
+    q_session = sessions.get('Q')
+    metadata = {
+        'circuit_data': None,
+        'drivers_data': {},
+        'session_data': {},
+        'driver_name_map': {},
+    }
+    if q_session:
+        # Extract circuit info
+        circuit_data = {
+            'outline': CHINA_TRACK,
+            'corners': [],  # Can add corners if needed
+            'rotation': 0  # Assume no rotation for now
+        }
+
+        # Extract driver info
+        drivers_data = {}
+        for drv_num in q_session.drivers:
+            drv_info = q_session.get_driver(drv_num)
+            drivers_data[str(drv_num)] = {
+                'abbreviation': drv_info.Abbreviation,
+                'full_name': drv_info.FullName,
+                'first_name': drv_info.FirstName,
+                'last_name': drv_info.LastName,
+                'team': drv_info.TeamName,
+                'team_color': drv_info.TeamColor
+            }
+
+        # Extract telemetry timeline
+        telemetry_data = {}
+        for drv_num in q_session.drivers:
+            try:
+                tel = q_session.car_data[str(drv_num)]
+                if not tel.empty:
+                    telemetry_data[str(drv_num)] = tel[['Time', 'X', 'Y', 'Speed', 'RPM', 'Gear', 'Throttle', 'Brake', 'DRS']].dropna().to_dict('records')
+                    # Rename columns to match expected format
+                    for sample in telemetry_data[str(drv_num)]:
+                        sample['t'] = sample.pop('Time').total_seconds()
+                        sample['spd'] = sample.pop('Speed')
+                        sample['rpm'] = sample.pop('RPM')
+                        sample['gear'] = sample.pop('Gear')
+                        sample['thr'] = sample.pop('Throttle')
+                        sample['brk'] = sample.pop('Brake')
+                        sample['drs'] = sample.pop('DRS')
+            except:
+                pass
+
+        # Extract lap data
+        laps_data = []
+        for _, lap in q_session.laps.iterrows():
+            laps_data.append({
+                'driver_number': lap['DriverNumber'],
+                'lap_number': lap['LapNumber'],
+                'lap_time': lap['LapTime'].total_seconds() if pd.notna(lap['LapTime']) else None,
+                'sector1_time': lap['Sector1Time'].total_seconds() if pd.notna(lap['Sector1Time']) else None,
+                'sector2_time': lap['Sector2Time'].total_seconds() if pd.notna(lap['Sector2Time']) else None,
+                'sector3_time': lap['Sector3Time'].total_seconds() if pd.notna(lap['Sector3Time']) else None,
+                'compound': lap['Compound'],
+                'tyre_life': lap['TyreLife'],
+                'position': lap['Position']
+            })
+
+        # Session info
+        session_data = {
+            'name': q_session.name,
+            'event': q_session.event['EventName'],
+            'year': year
+        }
+
+        driver_name_to_number = {}
+        for drv_num in q_session.drivers:
+            drv_info = q_session.get_driver(drv_num)
+            if drv_info is not None:
+                driver_name_to_number[drv_info.FullName] = drv_num
+                driver_name_to_number[drv_info.Abbreviation] = drv_num
+                driver_name_to_number[str(drv_num)] = drv_num
+
+        metadata = {
+            'circuit_data': circuit_data,
+            'drivers_data': drivers_data,
+            'session_data': session_data,
+            'driver_name_map': driver_name_to_number,
+        }
 
     fp_laps = pd.DataFrame()
     for label in ['FP1','FP2']:
@@ -79,7 +165,7 @@ def extract_pre_race_features(year, gp):
             features[col] = 0.0
         features[col] = features[col].fillna(features[col].mean() if features[col].notna().any() else 0.0)
 
-    return features
+    return features, metadata
 
 
 def train_historical_model(historical_df):
@@ -282,14 +368,15 @@ def generate_telemetry(lap_time,n_points=24,track_length_m=5400):
     xys = [sample_track_xy(d, track=CHINA_TRACK, track_length_m=track_length_m) for d in dist]
     return pd.DataFrame({
         'distance_m': dist,
-        'time_s': time,
+        't': time,
+        'lap': np.ones_like(time, dtype=int),
         'x': [p['x'] for p in xys],
         'y': [p['y'] for p in xys],
     })
 
 
 if __name__=='__main__':
-    pre=extract_pre_race_features(YEAR,GP_EVENT)
+    pre, metadata = extract_pre_race_features(YEAR,GP_EVENT)
     hist='historical_race_train.csv'
     if os.path.exists(hist):
         historical=pd.read_csv(hist)
@@ -310,6 +397,70 @@ if __name__=='__main__':
     print('Projected race finish:')
     print(final[['position','Driver','cum_time']].head(22))
 
+    # Build minimal frontend race payload from the simulated event
+    race_mock = {
+        'circuit': metadata.get('circuit_data') or {'outline': CHINA_TRACK, 'corners': [], 'rotation': 0},
+        'drivers': metadata.get('drivers_data') or {},
+        'laps': [],
+        'detailed_laps': [],
+        'session': metadata.get('session_data') or {'name': 'Simulated Session', 'event': 'Simulated GP', 'year': YEAR},
+    }
+
+    for _, row in simulation.iterrows():
+        driver_name = row['Driver']
+        driver_number = metadata['driver_name_map'].get(driver_name)
+        if driver_number is None:
+            continue
+
+        lap_start = row['cum_time'] - row['lap_time']
+        sector1 = row['lap_time'] * 0.30
+        sector2 = row['lap_time'] * 0.32
+        sector3 = row['lap_time'] - sector1 - sector2
+
+        race_mock['laps'].append({
+            'driver_number': int(driver_number),
+            'lap_number': int(row['lap']),
+            'lap_time': float(row['lap_time']),
+            'position': int(row['position'])
+        })
+
+        race_mock['detailed_laps'].append({
+            'driver_number': int(driver_number),
+            'lap_number': int(row['lap']),
+            'lap_time': float(row['lap_time']),
+            'lap_time_str': str(pd.to_timedelta(row['lap_time'], unit='s')),
+            'lap_start_time': float(lap_start),
+            'lap_end_time': float(row['cum_time']),
+            'sector1_time': float(sector1),
+            'sector2_time': float(sector2),
+            'sector3_time': float(sector3),
+            'sector1_session_time': float(lap_start + sector1),
+            'sector2_session_time': float(lap_start + sector1 + sector2),
+            'sector3_session_time': float(lap_start + sector1 + sector2 + sector3),
+            'compound': 'MEDIUM' if row['pit'] else 'SOFT',
+            'tyre_life': 0 if row['pit'] else 1,
+        })
+
+    with open('frontend/public/race_mock.json', 'w') as f:
+        json.dump(race_mock, f, indent=2)
+    print('Generated frontend race_mock.json from simulated race event')
+
+    # Compute lap start times
+    lap_starts = {}
+    for _, row in simulation.iterrows():
+        driver = row['Driver']
+        lap = row['lap']
+        cum_time = row['cum_time']
+        lap_time = row['lap_time']
+        start_time = cum_time - lap_time
+        if driver not in lap_starts:
+            lap_starts[driver] = {}
+        lap_starts[driver][lap] = start_time
+
+    # Save lap starts to JSON
+    with open('frontend/public/lap_starts.json', 'w') as f:
+        json.dump(lap_starts, f, indent=2)
+
     # Generate telemetry for all drivers' first lap
     telemetry_data = {}
     for _, row in pre.iterrows():
@@ -321,11 +472,11 @@ if __name__=='__main__':
             telemetry_data[driver] = telemetry.to_dict('records')  # list of dicts
 
     # Save telemetry to JSON
-    import json
     with open('frontend/public/telemetry.json', 'w') as f:
         json.dump(telemetry_data, f, indent=2)
 
     print(f"Telemetry generated for {len(telemetry_data)} drivers and saved to frontend/public/telemetry.json")
+    print("Lap starts saved to frontend/public/lap_starts.json")
 
     leader=final.iloc[0]['Driver']
     lap1=simulation[(simulation['Driver']==leader)&(simulation['lap']==1)].iloc[0]['lap_time']
