@@ -3,7 +3,6 @@ import { SimulationProvider, useSimulation } from './context/SimulationContext.j
 import TrackMap from './components/TrackMap.jsx';
 import Leaderboard from './components/Leaderboard.jsx';
 import TelemetryDash from './components/TelemetryDash.jsx';
-import StintChart from './components/StintChart.jsx';
 
 // ── Track Status Banner ──
 const STATUS_STYLES = {
@@ -227,8 +226,6 @@ function PlaybackControls() {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('live');
-
   return (
     <SimulationProvider>
       <div className="h-screen w-screen bg-f1-bg flex flex-col xl:flex-row xl:overflow-hidden overflow-y-auto">
@@ -239,35 +236,18 @@ export default function App() {
         </aside>
 
         <main className="xl:flex-1 flex flex-col gap-2 p-2 min-w-0 xl:min-h-0">
-          {/* Header — wraps on smaller screens */}
+          {/* Header */}
           <header className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 glass-panel flex-shrink-0">
             <div className="flex items-center gap-3">
-              {/* ── Tab Navigation ── */}
-              <div className="flex items-center gap-1 bg-f1-surface-alt rounded-lg p-0.5">
-                {[
-                  { id: 'live', label: 'Live Timing', icon: '📡' },
-                  { id: 'strategy', label: 'Strategy', icon: '🏁' },
-                ].map(tab => (
-                  <button key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-3 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-all duration-200
-                      ${activeTab === tab.id
-                        ? 'bg-f1-accent text-white shadow-lg shadow-f1-accent/20'
-                        : 'text-f1-text-muted hover:text-f1-text hover:bg-f1-border/30'}`}>
-                    <span className="mr-1">{tab.icon}</span>{tab.label}
-                  </button>
-                ))}
-              </div>
-
               <FastestLapDisplay />
             </div>
 
             <div className="flex items-center gap-4 text-[10px] font-mono text-f1-text-muted max-lg:hidden">
-              <span>BELGIUM 2023</span>
+              <span>CHINA 2026</span>
               <span>•</span>
-              <span>SPA-FRANCORCHAMPS</span>
+              <span>SHANGHAI INTERNATIONAL CIRCUIT</span>
               <span>•</span>
-              <span className="text-f1-yellow font-semibold">SPRINT</span>
+              <span className="text-f1-yellow font-semibold">RACE PREDICTION</span>
             </div>
 
             <WeatherDisplay />
@@ -275,21 +255,15 @@ export default function App() {
 
           <TrackStatusBanner />
 
-          {/* ── Tab Content ── */}
-          {activeTab === 'live' ? (
-            <div className="xl:flex-1 flex flex-col lg:flex-row gap-2 xl:min-h-0">
-              <div className="flex-1 glass-panel overflow-hidden min-w-0 max-lg:min-h-[400px] min-h-[300px]">
-                <TrackMap />
-              </div>
-              <div className="lg:w-[360px] lg:flex-shrink-0 min-h-[280px]">
-                <TelemetryDash />
-              </div>
+          {/* Live Timing View */}
+          <div className="xl:flex-1 flex flex-col lg:flex-row gap-2 xl:min-h-0">
+            <div className="flex-1 glass-panel overflow-hidden min-w-0 max-lg:min-h-[400px] min-h-[300px]">
+              <TrackMap />
             </div>
-          ) : (
-            <div className="xl:flex-1 xl:min-h-0 min-h-[600px]">
-              <StintChart />
+            <div className="lg:w-[360px] lg:flex-shrink-0 min-h-[280px]">
+              <TelemetryDash />
             </div>
-          )}
+          </div>
 
           <PlaybackControls />
         </main>

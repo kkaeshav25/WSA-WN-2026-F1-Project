@@ -63,7 +63,7 @@ export default function useRaceData() {
                         first_name: info.first_name,
                         last_name: info.last_name,
                         team_name: info.team,
-                        team_colour: info.team_color,
+                        team_colour: '#' + (info.team_color || '888888'),
                     });
                 }
 
@@ -128,6 +128,21 @@ export default function useRaceData() {
                     a.driver_number - b.driver_number || a.lap_number - b.lap_number
                 );
 
+                // ── Rotate telemetry coordinates to match track ──
+                let processedTelemetry = null;
+                if (telemetryRaw) {
+                    processedTelemetry = {};
+                    for (const [driverName, points] of Object.entries(telemetryRaw)) {
+                        processedTelemetry[driverName] = points.map(p => {
+                            if (p.x != null && p.y != null) {
+                                const rotated = rotatePoint(p.x, p.y);
+                                return { ...p, x: rotated.x, y: rotated.y };
+                            }
+                            return p;
+                        });
+                    }
+                }
+
                 setData({
                     trackCoords,
                     corners,
@@ -139,7 +154,7 @@ export default function useRaceData() {
                     weather,
                     detailedLaps,
                     sessionInfo: raw.session,
-                    telemetry: telemetryRaw,
+                    telemetry: processedTelemetry,
                     lapStarts: lapStartsRaw,
                 });
 

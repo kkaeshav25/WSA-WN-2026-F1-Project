@@ -60,11 +60,10 @@ export function SimulationProvider({ children }) {
                         changed = true;
                     }
 
-                    if (target.speed != null) {
-                        current.speed = current.speed + (target.speed - current.speed) * LERP_RATE;
-                        current.rpm = current.rpm + (target.rpm - current.rpm) * LERP_RATE;
-                        current.throttle = current.throttle + (target.throttle - current.throttle) * 0.2;
-                    }
+                    // Pass through non-interpolated fields
+                    current.speed = target.speed;
+                    current.rpm = target.rpm;
+                    current.throttle = target.throttle;
 
                     current.gear = target.gear;
                     current.brake = target.brake;
