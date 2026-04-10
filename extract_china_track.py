@@ -134,7 +134,7 @@ if __name__ == '__main__':
     with open('frontend/public/telemetry.json', 'r') as f:
         old_telemetry = json.load(f)
     
-    N_POINTS = 24  # Same as original
+    N_POINTS = 362  # Same as original
     new_telemetry = {}
     for driver_name, points in old_telemetry.items():
         if not points:

@@ -361,7 +361,7 @@ def sample_track_xy(dist, track=CHINA_TRACK, track_length_m=5400):
     return {'x': track[-1]['x'], 'y': track[-1]['y']}
 
 
-def generate_telemetry(lap_time,n_points=24,track_length_m=5400):
+def generate_telemetry(lap_time,n_points=362,track_length_m=5400):
     dist=np.linspace(0,track_length_m,n_points)
     speed=track_length_m/lap_time
     time=dist/speed
