@@ -29,7 +29,7 @@ def as_seconds(timedelta_series):
 
 def extract_pre_race_features(year, gp):
     sessions = {}
-    for label, sname in [('FP1','FP1'), ('FP2','FP2'), ('Q','Q')]:
+    for label, sname in [('FP1','FP1'), ('S','S'), ('Q','Q')]:
         try:
             s = fastf1.get_session(year, gp, sname)
             s.load(laps=True)
@@ -124,7 +124,7 @@ def extract_pre_race_features(year, gp):
         }
 
     fp_laps = pd.DataFrame()
-    for label in ['FP1','FP2']:
+    for label in ['FP1','S']:
         s = sessions.get(label)
         if s is None or s.laps.empty:
             continue
