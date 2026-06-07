@@ -3,7 +3,7 @@ import numpy as np
 import json
 
 # Load 2024 Miami qualifying session for track data
-session = fastf1.get_session(2024, 'Miami', 'Q')
+session = fastf1.get_session(2024, 'Monaco', 'Q')
 session.load(laps=True, telemetry=True)
 
 # Get the fastest qualifying lap
