@@ -49,7 +49,7 @@ def extract_pre_race_features(year, gp):
     if q_session:
         # Extract circuit info
         circuit_data = {
-            'outline': MONACO_TRACK,
+            'outline': BARCA_TRACK,
             'corners': [],  # Can add corners if needed
             'rotation': 0  # Assume no rotation for now
         }
@@ -204,7 +204,7 @@ def simulate_race(pre_features, model, n_laps, sc_laps=None):
     sim['position']=sim.groupby('lap')['cum_time'].rank(method='min')
     return sim
 
-MONACO_TRACK = [{
+BARCA_TRACK = [{
     "x": -2582.882453222831,
     "y": -3519.3348040317615
   },
@@ -1206,7 +1206,7 @@ MONACO_TRACK = [{
   }
 ]
 
-def sample_track_xy(dist, track=MONACO_TRACK, track_length_m=5400):
+def sample_track_xy(dist, track=BARCA_TRACK, track_length_m=5400):
     if dist < 0:
         dist = 0.0
     frac = (dist % track_length_m) / track_length_m
@@ -1239,7 +1239,7 @@ def generate_telemetry(lap_time,n_points=300,track_length_m=5400):
     dist=np.linspace(0,track_length_m,n_points)
     speed=track_length_m/lap_time
     time=dist/speed
-    xys = [sample_track_xy(d, track=MONACO_TRACK, track_length_m=track_length_m) for d in dist]
+    xys = [sample_track_xy(d, track=BARCA_TRACK, track_length_m=track_length_m) for d in dist]
     return pd.DataFrame({
         'distance_m': dist,
         't': time,
@@ -1273,7 +1273,7 @@ if __name__=='__main__':
 
     # Build minimal frontend race payload from the simulated event
     race_mock = {
-        'circuit': metadata.get('circuit_data') or {'outline': MONACO_TRACK, 'corners': [], 'rotation': 0},
+        'circuit': metadata.get('circuit_data') or {'outline': BARCA_TRACK, 'corners': [], 'rotation': 0},
         'drivers': metadata.get('drivers_data') or {},
         'laps': [],
         'detailed_laps': [],
